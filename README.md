@@ -1,30 +1,55 @@
-# AuAg – Audio-Based Email Assistant
+# Echo Mail – Audio-Based Email Assistant
 
-AuAg is a real-time, voice-driven email assistant that allows users to compose, edit, and send emails using natural speech. The agent supports conversational interaction, flexible workflows, and iterative refinement without requiring a fixed sequence of steps.
+Echo Mail is a real-time, voice-driven email platform that enables users to compose, edit, and manage emails using natural speech. The system supports conversational interaction, flexible workflows, email summarization, and AI-powered personalization based on recipient relationships.
+
+Access the application here: https://auag-assistant.vercel.app/
+
 
 ---
 
 ## Features
 
-- Voice-first email composition using real-time speech interaction  
-- Flexible workflow (recipient, subject, and body can be provided in any order)  
-- Smart recipient disambiguation when multiple matches exist  
-- Iterative conversational editing of subject and body  
-- Live UI updates reflecting all changes  
-- Explicit confirmation required before sending emails  
+* Voice-first email composition using real-time speech interaction
+* Flexible workflow (recipient, subject, and body can be provided in any order)
+* Conversational generation and iterative refinement of email content
+* Smart recipient disambiguation when multiple matches exist
+* AI-powered email summarization for incoming messages
+* Relationship-aware personalization that adapts tone and context over time
+* Live UI updates reflecting all changes
+* Schedule emails to be sent at a specified date and time
+
+---
+
+
+## Screenshots
+
+<table>
+  <tr>
+    <td colspan="3" align="center">
+      <img src="assets/compose-demo.png" alt="Top Image" width="600"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="assets/relation-demo.png" alt="Bottom Left" width="200"/>
+    </td>
+    <td align="center">
+      <img src="assets/summary-demo.png" alt="Bottom Right" width="200"/>
+    </td>
+    <td align="center">
+      <img src="assets/schedule-demo.png" alt="Bottom Right" width="200"/>
+    </td>
+  </tr>
+</table>
 
 ---
 
 ## Project Structure
 
 ```
-
 AuAg - Assistant/
 ├── backend/
 │   ├── app.py
-│   └── ...
-├── speech/
-│   ├── speech_controller.py
 │   └── ...
 ├── frontend/
 │   ├── src/
@@ -32,22 +57,25 @@ AuAg - Assistant/
 │   └── package.json
 ├── .gitignore
 └── README.md
-
-````
+```
 
 ---
 
 ## Tech Stack
 
 ### Backend
-- Python
-- Speech processing and agent logic
-- Email generation and sending
+
+* Python
+* Speech processing and conversational agent logic - AssemblyAI
+* Email generation, summarization, and delivery - OpenAI API
+* Relationship memory and personalization logic
 
 ### Frontend
-- React
-- Real-time UI for email composition
-- Voice interaction interface
+
+* React
+* Real-time UI for email composition and review
+* Voice interaction interface
+* Email summary and edit visualization
 
 ---
 
@@ -55,21 +83,9 @@ AuAg - Assistant/
 
 ### Prerequisites
 
-- Python 3.9+
-- Node.js and npm
-- Virtual environment (recommended)
-
----
-
-## System Dependencies (macOS)
-
-This project requires **PortAudio** for audio input.
-
-Install it using Homebrew:
-
-```bash
-brew install portaudio
-````
+* Python 3.9+
+* Node.js and npm
+* Virtual environment (recommended)
 
 ---
 
@@ -131,56 +147,33 @@ Create a `.env` file in the backend directory.
    * Client ID
    * Client Secret
 
+---
 
 ### AssemblyAI API Key
 
 AssemblyAI is used for speech-to-text processing.
 
-1. Go to AssemblyAI and log in:  
-   https://www.assemblyai.com/
+1. Log in at:
+   [https://www.assemblyai.com/](https://www.assemblyai.com/)
 
-2. Navigate to your dashboard and copy your **API Key**.
+2. Copy your **API Key** from the dashboard.
 
-3. Add the key to `speech/.env`:
+3. Add it to `backend/.env`:
 
 ```env
 ASSEMBLYAI_API_KEY=your_assemblyai_api_key
 ```
 
+---
+
 ### OpenAI API Key
 
-OpenAI is used for language generation and interpretation.
-
-Get your OpenAI API key from https://platform.openai.com/
-
+OpenAI is used for language understanding, email generation, summarization, and personalization.
 
 Add your API key to `backend/.env`:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key
-```
-
----
-
-### ngrok Setup
-
-ngrok is used to expose the local backend for external callbacks or integrations.
-
-1. Sign up at:
-   [https://ngrok.com/](https://ngrok.com/)
-
-2. Get your **ngrok auth token** from the dashboard.
-
-3. Authenticate ngrok locally:
-
-```bash
-ngrok config add-authtoken YOUR_NGROK_AUTH_TOKEN
-```
-
-4. Run ngrok:
-
-```bash
-npx ngrok http 5001      
 ```
 
 
@@ -189,22 +182,28 @@ npx ngrok http 5001
 ## How It Works
 
 1. The user speaks to the agent.
-2. The agent extracts intent (recipient, subject, body, edits).
-3. Email content is generated or updated.
-4. Changes are reflected instantly in the frontend.
-5. The user confirms the final email.
-6. The email is sent.
+2. The agent extracts intent (recipient, subject, body, edits, or summary request).
+3. Email content is generated, summarized, or updated.
+4. Recipient relationship context is applied when available.
+5. Changes are reflected instantly in the frontend.
+6. The user confirms the final email.
+7. The email is sent.
 
 ---
 
 ## Use Cases
 
 * Hands-free email composition
+* Email summarization and review
+* Relationship-aware professional communication
 * Accessibility-focused workflows
 * Voice-first productivity tools
+* Scheduled emails
 
 ---
 
 ## License
 
 This project is licensed under the MIT License.
+
+---

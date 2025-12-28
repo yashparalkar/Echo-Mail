@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 1. ADD 'Search' to imports
 import { Mail, Send, User, X, Check, Inbox, RefreshCw, ArrowLeft, Clock, Mic, Square, Reply, Sparkles, FileText, Paperclip, Download, Plus, Keyboard, ChevronUp, Calendar, Menu, LogOut, OctagonAlert, Search } from 'lucide-react';
 
 const API_BASE = process.env.REACT_APP_API_BASE || '';
 
 const GmailComposeApp = () => {
-  // ... existing state ...
+  // Authentication
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
@@ -17,7 +16,7 @@ const GmailComposeApp = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
-  // ... existing compose fields ...
+  // Compose Fields
   const [toField, setToField] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -38,7 +37,7 @@ const GmailComposeApp = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
 
-  // ... existing reply/cc/mediator/ai/audio/file/schedule state ...
+  // Reply
   const [showReplyMenu, setShowReplyMenu] = useState(false);
   const [inlineReplyOpen, setInlineReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState('');
@@ -96,7 +95,6 @@ const GmailComposeApp = () => {
     else return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
   const handleDownload = async (messageId, attachmentId, filename) => {
-     // ... same as before
      try {
       const response = await fetch(`${API_BASE}/email/attachment?messageId=${messageId}&attachmentId=${attachmentId}&filename=${encodeURIComponent(filename)}`, {
         headers: { 'Content-Type': 'application/json' },
@@ -128,7 +126,6 @@ const GmailComposeApp = () => {
   }, []);
 
 
-  // --- UPDATED LOAD INBOX FUNCTION TO SUPPORT SEARCH ---
   const loadInbox = useCallback(async (pageToken = null, label = 'INBOX', query = null) => {
     setLoadingMessages(true);
     try {
@@ -185,7 +182,6 @@ const GmailComposeApp = () => {
   }, [loadInbox]);
 
   const loadMessageDetail = useCallback(async (messageId, pushHistory = true) => {
-    // ... same as before
     setSummary(''); 
     setShowSummary(false);
     setIsSummarizing(false);
@@ -227,7 +223,6 @@ const GmailComposeApp = () => {
 
   useEffect(() => { checkAuthStatus(); }, [checkAuthStatus]);
 
-  // --- UPDATED NAVIGATION TO HANDLE SEARCH CLEARING ---
   const handleNavigation = (view) => {
     setCurrentView(view);
     setShowCompose(false);
@@ -245,7 +240,6 @@ const GmailComposeApp = () => {
     else if (view === 'spam') loadInbox(null, 'SPAM');
   };
 
-  // ... Mediator effects same as before ...
   useEffect(() => {
     if (!isAuthenticated) return;
     let mounted = true;
@@ -295,7 +289,6 @@ const GmailComposeApp = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, [loadInbox]);
 
-  // ... Contact suggestions, keydown, auth, logout, summarize, compose, reply handlers (same as before) ...
   useEffect(() => {
     let currentText = ''; if (activeField === 'to') currentText = toField; else if (activeField === 'cc') currentText = ccField; else if (activeField === 'bcc') currentText = bccField; const term = getLastTerm(currentText);
     if (!activeField || term.length < 2) { setSuggestions([]); return; } const controller = new AbortController(); const searchContacts = async () => { try { const response = await fetch(`${API_BASE}/contacts/search?q=${encodeURIComponent(term)}`, { credentials: 'include', signal: controller.signal }); const data = await response.json(); setSuggestions(data.contacts || []); setSelectedIndex(-1); } catch (error) { if (error.name !== 'AbortError') console.error('Contact search failed:', error); } }; const id = setTimeout(searchContacts, 300); return () => { clearTimeout(id); controller.abort(); };
@@ -316,7 +309,6 @@ const GmailComposeApp = () => {
   const handleAiTextSubmit = async () => { if (!aiInstruction.trim()) return; setIsAiProcessing(true); if (showMobileTextInput) setShowMobileTextInput(false); try { await fetch(`${API_BASE}/mediator/advance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ input: aiInstruction }) }); setAiInstruction(''); } catch (err) { console.error('Text submission failed', err); } finally { setIsAiProcessing(false); } };
   const handleMobileFabClick = () => { if (isRecording) handleAudioToggle(); else if (showMobileTextInput) setShowMobileTextInput(false); else setShowMobileAiMenu(prev => !prev); };
 
-  // --- NEW: SEARCH SUBMIT HANDLER ---
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
