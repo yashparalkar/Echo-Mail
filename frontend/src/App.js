@@ -6,6 +6,7 @@ const API_BASE = process.env.REACT_APP_API_BASE || '';
 const GmailComposeApp = () => {
   // Authentication
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [status, setStatus] = useState('');
@@ -179,6 +180,9 @@ const GmailComposeApp = () => {
     } catch (error) {
       console.error('Auth check failed:', error);
     }
+    finally {
+      setIsAuthChecking(false);
+    }
   }, [loadInbox]);
 
   const loadMessageDetail = useCallback(async (messageId, pushHistory = true) => {
@@ -328,6 +332,19 @@ const GmailComposeApp = () => {
 
   const renderSuggestions = (fieldType) => { if (activeField !== fieldType || suggestions.length === 0) return null; return ( <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto"> {suggestions.map((contact, index) => ( <div key={contact.email} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(contact); }} className={`px-4 py-3 cursor-pointer transition-all duration-150 border-b last:border-0 ${index === selectedIndex ? 'bg-gradient-to-r from-violet-50 to-purple-50 border-l-4 border-violet-500' : 'hover:bg-slate-50'}`}> <div className="font-semibold text-slate-800">{contact.name}</div> <div className="text-sm text-slate-500">{contact.email}</div> </div> ))} </div> ); };
 
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="p-4 bg-violet-100 rounded-2xl mb-4">
+             <Mail className="w-8 h-8 text-violet-600" />
+          </div>
+          <div className="h-4 w-32 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+  
   if (!isAuthenticated) return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-fuchsia-100 flex items-center justify-center p-4">
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 sm:p-10 max-w-md w-full mx-auto border border-white/20">

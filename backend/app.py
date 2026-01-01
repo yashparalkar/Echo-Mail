@@ -88,7 +88,8 @@ app.secret_key = os.environ["FLASK_SECRET_KEY"]
 
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True
+    SESSION_COOKIE_SECURE=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
 
 
@@ -138,6 +139,7 @@ def google_callback():
         flow.fetch_token(authorization_response=request.url)
 
         creds = flow.credentials
+        session.permanent = True
         session["google_creds"] = credentials_to_dict(creds)
         
         try:
