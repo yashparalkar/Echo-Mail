@@ -37,6 +37,7 @@ const GmailComposeApp = () => {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
+  const [messageCache, setMessageCache] = useState({});
 
   // Reply
   const [showReplyMenu, setShowReplyMenu] = useState(false);
@@ -127,22 +128,30 @@ const GmailComposeApp = () => {
   }, []);
 
 
-  const loadInbox = useCallback(async (pageToken = null, label = 'INBOX', query = null) => {
+  const loadInbox = useCallback(async (pageToken = null, label = 'INBOX', query = null, useCache = false) => {
     setLoadingMessages(true);
+
+    // 1. CACHE CHECK
+    // Only use cache if requested, we are on page 1 (no pageToken), and not searching
+    if (useCache && !pageToken && !query && messageCache[label]) {
+        console.log(`Loading ${label} from cache`);
+        setMessages(messageCache[label].messages);
+        setNextPageToken(messageCache[label].nextPageToken);
+        setLoadingMessages(false);
+        return; 
+    }
+
     try {
       let url;
       
-      // 1. Search Logic
       if (query) {
         url = pageToken 
           ? `${API_BASE}/inbox/messages?pageToken=${pageToken}&q=${encodeURIComponent(query)}`
           : `${API_BASE}/inbox/messages?q=${encodeURIComponent(query)}`;
       } 
-      // 2. Scheduled Logic
       else if (label === 'SCHEDULED') {
         url = `${API_BASE}/scheduled/messages`;
       } 
-      // 3. Standard Labels (Inbox, Sent, Spam)
       else {
         url = pageToken 
           ? `${API_BASE}/inbox/messages?pageToken=${pageToken}&label=${label}` 
@@ -151,9 +160,24 @@ const GmailComposeApp = () => {
         
       const response = await fetch(url, { credentials: 'include' });
       const data = await response.json();
+      
       if (data.success) {
+        const newMessages = pageToken ? (messages) => [...messages, ...data.messages] : data.messages;
+        
+        // 2. UPDATE STATE
         setMessages(prev => pageToken ? [...prev, ...data.messages] : data.messages);
         setNextPageToken(data.nextPageToken);
+
+        // 3. SAVE TO CACHE (Only if not searching and not paging)
+        if (!query && !pageToken) {
+            setMessageCache(prev => ({
+                ...prev,
+                [label]: { 
+                    messages: data.messages, 
+                    nextPageToken: data.nextPageToken 
+                }
+            }));
+        }
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -161,7 +185,7 @@ const GmailComposeApp = () => {
     } finally {
       setLoadingMessages(false);
     }
-  }, []);
+  }, [messageCache]); // Add messageCache to dependencies
 
   const checkAuthStatus = useCallback(async () => {
     try {
@@ -233,15 +257,24 @@ const GmailComposeApp = () => {
     setSelectedMessage(null);
     setIsMobileMenuOpen(false);
     
-    // Reset search when navigating via sidebar
     setSearchQuery('');
     setIsSearching(false);
 
+    // --- KEY FIX: Clear messages immediately so old content doesn't show ---
+    setMessages([]); 
+    setLoadingMessages(true);
+    // ---------------------------------------------------------------------
+
     pushInboxState(false, view);
-    if (view === 'inbox') loadInbox(null, 'INBOX');
-    else if (view === 'sent') loadInbox(null, 'SENT');
-    else if (view === 'scheduled') loadInbox(null, 'SCHEDULED');
-    else if (view === 'spam') loadInbox(null, 'SPAM');
+
+    // Determine label and load with Cache enabled
+    let label = 'INBOX';
+    if (view === 'sent') label = 'SENT';
+    else if (view === 'scheduled') label = 'SCHEDULED';
+    else if (view === 'spam') label = 'SPAM';
+
+    // Pass 'true' as the 4th argument to enable caching
+    loadInbox(null, label, null, true);
   };
 
   useEffect(() => {
@@ -308,7 +341,13 @@ const GmailComposeApp = () => {
   const handleReplyClick = () => setShowReplyMenu(true);
   const handleReplyThread = () => { setShowReplyMenu(false); setInlineReplyOpen(true); setTimeout(() => { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }, 100); };
   const sendInlineReply = async () => { if (!replyBody.trim() || !selectedMessage) return; setLoading(true); setStatus('Sending reply...'); try { const emailMatch = selectedMessage.from.match(/<([^>]+)>/); const replyToEmail = emailMatch ? emailMatch[1] : selectedMessage.from; const formData = new FormData(); formData.append('to', replyToEmail); formData.append('subject', selectedMessage.subject); formData.append('body', replyBody); formData.append('threadId', selectedMessage.threadId); formData.append('messageId', selectedMessage.id); attachments.forEach((file) => formData.append('attachments', file)); const response = await fetch(`${API_BASE}/email/send`, { method: 'POST', credentials: 'include', body: formData }); const data = await response.json(); if (data.success) { setStatus('Reply sent!'); setReplyBody(''); setAttachments([]); setInlineReplyOpen(false); } else { setStatus('Failed: ' + (data.error || 'unknown')); } } catch (error) { console.error(error); setStatus('Error: ' + error.message); } finally { setLoading(false); setTimeout(() => setStatus(''), 2000); } };
-  const handleSend = async () => { if (!toField || !subject) { setStatus('Please fill in recipient and subject'); setTimeout(() => setStatus(''), 2000); return; } setLoading(true); setStatus(scheduleTime ? 'Scheduling email...' : 'Sending email...'); try { const formData = new FormData(); formData.append('to', toField); formData.append('subject', subject); formData.append('body', body); if (ccField) formData.append('cc', ccField); if (bccField) formData.append('bcc', bccField); attachments.forEach((file) => formData.append('attachments', file)); if (scheduleTime) { formData.append('scheduledTime', new Date(scheduleTime).toISOString()); } const response = await fetch(`${API_BASE}/email/send`, { method: 'POST', credentials: 'include', body: formData }); const data = await response.json(); if (data.success) { setStatus(data.scheduled ? 'Email successfully scheduled!' : 'Email sent successfully!'); setToField(''); setCcField(''); setBccField(''); setSubject(''); setBody(''); setAttachments([]); setScheduleTime(''); setShowScheduleInput(false); if (fileInputRef.current) fileInputRef.current.value = ""; setShowCompose(false); handleNavigation('inbox'); } else { setStatus('Failed: ' + (data.error || 'unknown')); } } catch (error) { console.error(error); setStatus('Error: ' + error.message); } finally { setLoading(false); setTimeout(() => setStatus(''), 3000); } };
+  const handleSend = async () => { if (!toField || !subject) { setStatus('Please fill in recipient and subject'); setTimeout(() => setStatus(''), 2000); return; } setLoading(true); setStatus(scheduleTime ? 'Scheduling email...' : 'Sending email...'); try { const formData = new FormData(); formData.append('to', toField); formData.append('subject', subject); formData.append('body', body); if (ccField) formData.append('cc', ccField); if (bccField) formData.append('bcc', bccField); attachments.forEach((file) => formData.append('attachments', file)); if (scheduleTime) { formData.append('scheduledTime', new Date(scheduleTime).toISOString()); } const response = await fetch(`${API_BASE}/email/send`, { method: 'POST', credentials: 'include', body: formData }); const data = await response.json(); if (data.success) { setStatus(data.scheduled ? 'Email successfully scheduled!' : 'Email sent successfully!'); setToField(''); setCcField(''); setBccField(''); setSubject(''); setBody(''); 
+    setMessageCache(prev => {
+        const newCache = { ...prev };
+        delete newCache['SENT']; 
+        return newCache;
+    });
+    setAttachments([]); setScheduleTime(''); setShowScheduleInput(false); if (fileInputRef.current) fileInputRef.current.value = ""; setShowCompose(false); handleNavigation('inbox'); } else { setStatus('Failed: ' + (data.error || 'unknown')); } } catch (error) { console.error(error); setStatus('Error: ' + error.message); } finally { setLoading(false); setTimeout(() => setStatus(''), 3000); } };
   const handleAudioToggle = async () => { setShowMobileTextInput(false); if (!isRecording) { try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); streamRef.current = stream; const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); audioChunksRef.current = []; mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunksRef.current.push(event.data); }; mediaRecorder.onstop = async () => { const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); const formData = new FormData(); formData.append('audio', audioBlob, 'recording.webm'); setIsAiProcessing(true); try { const response = await fetch(`${API_BASE}/audio/transcribe`, { method: 'POST', credentials: 'include', body: formData }); const data = await response.json(); if (data.success) { await fetch(`${API_BASE}/mediator/advance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ input: data.text }) }); } } catch (err) { console.error('Transcription failed', err); } finally { setIsAiProcessing(false); } }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecording(true); } catch (err) { console.error('Failed to get audio', err); } } else { if (mediaRecorderRef.current) mediaRecorderRef.current.stop(); if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); mediaRecorderRef.current = null; streamRef.current = null; setIsRecording(false); } };
   const handleAiTextSubmit = async () => { if (!aiInstruction.trim()) return; setIsAiProcessing(true); if (showMobileTextInput) setShowMobileTextInput(false); try { await fetch(`${API_BASE}/mediator/advance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ input: aiInstruction }) }); setAiInstruction(''); } catch (err) { console.error('Text submission failed', err); } finally { setIsAiProcessing(false); } };
   const handleMobileFabClick = () => { if (isRecording) handleAudioToggle(); else if (showMobileTextInput) setShowMobileTextInput(false); else setShowMobileAiMenu(prev => !prev); };
@@ -344,7 +383,7 @@ const GmailComposeApp = () => {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-fuchsia-100 flex items-center justify-center p-4">
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 sm:p-10 max-w-md w-full mx-auto border border-white/20">
@@ -504,12 +543,15 @@ const GmailComposeApp = () => {
 
                   <button 
                     onClick={() => {
-                       // Reload based on current state
-                       if (isSearching) loadInbox(null, null, searchQuery);
-                       else if (currentView === 'scheduled') loadInbox(null, 'SCHEDULED');
-                       else if (currentView === 'spam') loadInbox(null, 'SPAM');
-                       else loadInbox(null, currentView === 'sent' ? 'SENT' : 'INBOX');
-                    }} 
+                        // Clear cache for current view to force reload
+                        const label = currentView === 'sent' ? 'SENT' : currentView === 'scheduled' ? 'SCHEDULED' : currentView === 'spam' ? 'SPAM' : 'INBOX';
+                        
+                        // Clear messages to show loading state
+                        if (!isSearching) setMessages([]); 
+                        
+                        if (isSearching) loadInbox(null, null, searchQuery, false); // Search doesn't use cache anyway
+                        else loadInbox(null, label, null, false); // Pass false to ignore cache
+                    }}
                     disabled={loadingMessages} 
                     className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-violet-600 rounded-xl shadow-sm transition-all self-end md:self-auto"
                   >
