@@ -4,6 +4,17 @@ Echo Mail is a real-time, voice-driven email platform that enables users to comp
 
 Access the application here: https://auag-assistant.vercel.app/
 
+**Note on Google Permissions:**
+Since this is an academic project involving AI email summarization, it requires read-access to your inbox (`gmail.readonly`). As a result, Google will display an "Unverified App" warning during login.
+
+**To bypass this:**
+1. Click the "Sign in with Google" button.
+2. On the warning screen, click **Advanced** (bottom left).
+3. Select **Go to auag.onrender.com (unsafe)**.
+4. Type "Continue" to grant the AI agent access.
+
+*Rest assured, your data is processed in real-time and never stored permanently. You can revoke access at any time via your Google Account settings.*
+
 
 ---
 
